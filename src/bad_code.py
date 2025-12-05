@@ -1,21 +1,23 @@
 import sqlite3
+import bcrypt
 
 class UserService:
     def __init__(self, db_path):
         self.conn = sqlite3.connect(db_path)
         
     def login(self, username, password):
-        # SQL Injection
-        query = f"SELECT * FROM users WHERE username='{username}'"
+        # Use parameterized query to prevent SQL injection
+        query = "SELECT password_hash FROM users WHERE username=?"
         
-        # Plain text heslo
-        if password == "admin123":
-            return True
-        
-        #  Neošetřená výjimka
-        cursor = self.conn.execute(query)
+        cursor = self.conn.execute(query, (username,))
         result = cursor.fetchone()
-        return result is not None
+        
+        if result is None:
+            return False
+        
+        # Verify password against stored bcrypt hash
+        stored_hash = result[0]
+        return bcrypt.checkpw(password.encode(), stored_hash)
     
     def process_payment(self, card_number, cvv, amount):
         # Logování citlivých dat
